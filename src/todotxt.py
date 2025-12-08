@@ -8,8 +8,7 @@ from datetime import datetime, timedelta
 
 __version__ = "0.1.0"
 
-DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-TAG_PATTERN = re.compile(r"[@+]\S+")
+TAG_PATTERN = re.compile(r"@\S+")
 META_PATTERN = re.compile(r"(\w+):(\S+)")
 
 
@@ -21,7 +20,6 @@ class TodotxtError(Exception):
 class Todo:
     title: str
     completed: bool = False
-    date: str | None = None
     tags: list[str] = field(default_factory=list)
     description: str = ""
     meta: dict[str, str] = field(default_factory=dict)
@@ -51,22 +49,17 @@ def read_todotxt(file):
 def _parse_todo_line(line):
     """Parse a single todo line into a Todo object."""
     completed = False
-    date = None
 
     if line.startswith("x "):
         completed = True
         line = line[2:]
-        parts = line.split(" ", 1)
-        if parts and DATE_PATTERN.match(parts[0]):
-            date = parts[0]
-            line = parts[1] if len(parts) > 1 else ""
 
     tags = TAG_PATTERN.findall(line)
     meta = dict(META_PATTERN.findall(line))
     title = TAG_PATTERN.sub("", line)
     title = META_PATTERN.sub("", title).strip()
 
-    return Todo(title=title, completed=completed, date=date, tags=tags, meta=meta)
+    return Todo(title=title, completed=completed, tags=tags, meta=meta)
 
 
 def _todo_hash(todo):
@@ -75,12 +68,18 @@ def _todo_hash(todo):
 
 
 def _add_recurrence(date_str, rec):
-    """Add recurrence interval to a date string."""
+    """Add recurrence interval to a date string.
+
+    rec can be strict (e.g., "3w") or flexible (e.g., "+3w").
+    Returns the new date string.
+    """
     if not date_str:
         return None
     date = datetime.strptime(date_str, "%Y-%m-%d")
-    amount = int(rec[:-1])
-    unit = rec[-1]
+    # Strip + prefix for flexible recurrence (handled by caller)
+    rec_value = rec.lstrip("+")
+    amount = int(rec_value[:-1])
+    unit = rec_value[-1]
     if unit == "d":
         date += timedelta(days=amount)
     elif unit == "w":
@@ -97,6 +96,9 @@ def process_recurring(todos):
 
     For each completed todo with a rec: meta field, creates a new uncompleted
     todo unless one already exists with a _prev: hash pointing to it.
+
+    Strict recurrence (e.g., "3w"): new due date based on old due date.
+    Flexible recurrence (e.g., "+3w"): new due date based on completion date.
     """
     existing_prev = {t.meta.get("_prev") for t in todos if "_prev" in t.meta}
     new_todos = []
@@ -105,14 +107,22 @@ def process_recurring(todos):
         if todo.completed and "rec" in todo.meta:
             todo_hash = _todo_hash(todo)
             if todo_hash not in existing_prev:
-                new_date = _add_recurrence(todo.date, todo.meta["rec"])
+                rec = todo.meta["rec"]
+                is_flexible = rec.startswith("+")
+                base_date = (
+                    todo.meta.get("completed") if is_flexible
+                    else todo.meta.get("due")
+                )
+                new_due = _add_recurrence(base_date, rec)
+                new_meta = {"rec": rec, "_prev": todo_hash}
+                if new_due:
+                    new_meta["due"] = new_due
                 new_todo = Todo(
                     title=todo.title,
                     completed=False,
-                    date=new_date,
                     tags=list(todo.tags),
                     description=todo.description,
-                    meta={"rec": todo.meta["rec"], "_prev": todo_hash},
+                    meta=new_meta,
                 )
                 new_todos.append(new_todo)
 
@@ -125,8 +135,6 @@ def write_todotxt(file, todos):
         line = ""
         if todo.completed:
             line += "x "
-            if todo.date:
-                line += f"{todo.date} "
         line += todo.title
         if todo.tags:
             line += " " + " ".join(todo.tags)
