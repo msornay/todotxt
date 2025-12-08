@@ -25,8 +25,8 @@ class Todo:
     rec: str | None = None
 
 
-def scan_todotxt(file):
-    """Scan a todo.txt file and return list of Todo objects."""
+def read_todotxt(file):
+    """Read a todo.txt file and return list of Todo objects."""
     todos = []
     current = None
 
@@ -68,6 +68,25 @@ def _parse_todo_line(line):
     return Todo(title=title, completed=completed, date=date, tags=tags, rec=rec)
 
 
+def write_todotxt(file, todos):
+    """Write a list of Todo objects to a file."""
+    for todo in todos:
+        line = ""
+        if todo.completed:
+            line += "x "
+            if todo.date:
+                line += f"{todo.date} "
+        line += todo.title
+        if todo.tags:
+            line += " " + " ".join(todo.tags)
+        if todo.rec:
+            line += f" rec:{todo.rec}"
+        file.write(line + "\n")
+        if todo.description:
+            for desc_line in todo.description.split("\n"):
+                file.write(f"  {desc_line}\n")
+
+
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser()
@@ -76,7 +95,7 @@ def main():
 
     args = parser.parse_args()
 
-    scan_todotxt(args.file)
+    read_todotxt(args.file)
 
     return 0
 
