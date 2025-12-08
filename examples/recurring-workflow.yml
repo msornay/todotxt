@@ -39,12 +39,13 @@ jobs:
         run: pip install git+https://github.com/msornay/todotxt.git
 
       # Run do-rec on each file in todos/ folder (ignoring subfolders)
+      # Note: -o cannot be the same as input file, so we use a temp file
       - name: Process recurring tasks
         run: |
           for file in todos/*; do
             [ -f "$file" ] || continue
             echo "Processing $file"
-            todotxt do-rec "$file" -o "$file"
+            todotxt do-rec "$file" -o "$file.tmp" && mv "$file.tmp" "$file"
           done
 
       # Only create a PR if any files changed
