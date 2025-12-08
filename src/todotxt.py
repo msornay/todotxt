@@ -19,7 +19,7 @@ class TodotxtError(Exception):
 @dataclass
 class Todo:
     title: str
-    completed: bool = False
+    done: bool = False
     tags: list[str] = field(default_factory=list)
     description: str = ""
     meta: dict[str, str] = field(default_factory=dict)
@@ -48,10 +48,10 @@ def read_todotxt(file):
 
 def _parse_todo_line(line):
     """Parse a single todo line into a Todo object."""
-    completed = False
+    done = False
 
     if line.startswith("x "):
-        completed = True
+        done = True
         line = line[2:]
 
     tags = TAG_PATTERN.findall(line)
@@ -59,7 +59,7 @@ def _parse_todo_line(line):
     title = TAG_PATTERN.sub("", line)
     title = META_PATTERN.sub("", title).strip()
 
-    return Todo(title=title, completed=completed, tags=tags, meta=meta)
+    return Todo(title=title, done=done, tags=tags, meta=meta)
 
 
 def _todo_hash(todo):
@@ -92,25 +92,31 @@ def _add_recurrence(date_str, rec):
 
 
 def process_recurring(todos):
-    """Create new todos for completed recurring tasks.
+    """Create new todos for done recurring tasks.
 
-    For each completed todo with a rec: meta field, creates a new uncompleted
-    todo unless one already exists with a _prev: hash pointing to it.
+    For each done todo with a rec: meta field, creates a new todo
+    unless one already exists with a _prev: hash pointing to it.
 
     Strict recurrence (e.g., "3w"): new due date based on old due date.
-    Flexible recurrence (e.g., "+3w"): new due date based on completion date.
+    Flexible recurrence (e.g., "+3w"): new due date based on done date.
+
+    Raises TodotxtError if a done recurring task has no done: date.
     """
     existing_prev = {t.meta.get("_prev") for t in todos if "_prev" in t.meta}
     new_todos = []
 
     for todo in todos:
-        if todo.completed and "rec" in todo.meta:
+        if todo.done and "rec" in todo.meta:
+            if "done" not in todo.meta:
+                raise TodotxtError(
+                    f"Done recurring task missing done: date: {todo.title}"
+                )
             todo_hash = _todo_hash(todo)
             if todo_hash not in existing_prev:
                 rec = todo.meta["rec"]
                 is_flexible = rec.startswith("+")
                 base_date = (
-                    todo.meta.get("completed") if is_flexible
+                    todo.meta.get("done") if is_flexible
                     else todo.meta.get("due")
                 )
                 new_due = _add_recurrence(base_date, rec)
@@ -119,7 +125,7 @@ def process_recurring(todos):
                     new_meta["due"] = new_due
                 new_todo = Todo(
                     title=todo.title,
-                    completed=False,
+                    done=False,
                     tags=list(todo.tags),
                     description=todo.description,
                     meta=new_meta,
@@ -133,7 +139,7 @@ def write_todotxt(file, todos):
     """Write a list of Todo objects to a file."""
     for todo in todos:
         line = ""
-        if todo.completed:
+        if todo.done:
             line += "x "
         line += todo.title
         if todo.tags:
