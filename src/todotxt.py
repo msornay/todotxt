@@ -1,14 +1,16 @@
 """todotxt"""
 
 import argparse
+import hashlib
 import re
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 
 __version__ = "0.1.0"
 
 DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 TAG_PATTERN = re.compile(r"[@+]\S+")
-REC_PATTERN = re.compile(r"rec:(\d+[dwmy])")
+META_PATTERN = re.compile(r"(\w+):(\S+)")
 
 
 class TodotxtError(Exception):
@@ -22,7 +24,7 @@ class Todo:
     date: str | None = None
     tags: list[str] = field(default_factory=list)
     description: str = ""
-    rec: str | None = None
+    meta: dict[str, str] = field(default_factory=dict)
 
 
 def read_todotxt(file):
@@ -60,12 +62,61 @@ def _parse_todo_line(line):
             line = parts[1] if len(parts) > 1 else ""
 
     tags = TAG_PATTERN.findall(line)
-    rec_match = REC_PATTERN.search(line)
-    rec = rec_match.group(1) if rec_match else None
+    meta = dict(META_PATTERN.findall(line))
     title = TAG_PATTERN.sub("", line)
-    title = REC_PATTERN.sub("", title).strip()
+    title = META_PATTERN.sub("", title).strip()
 
-    return Todo(title=title, completed=completed, date=date, tags=tags, rec=rec)
+    return Todo(title=title, completed=completed, date=date, tags=tags, meta=meta)
+
+
+def _todo_hash(todo):
+    """Generate a short hash for a todo based on title."""
+    return hashlib.sha1(todo.title.encode()).hexdigest()[:8]
+
+
+def _add_recurrence(date_str, rec):
+    """Add recurrence interval to a date string."""
+    if not date_str:
+        return None
+    date = datetime.strptime(date_str, "%Y-%m-%d")
+    amount = int(rec[:-1])
+    unit = rec[-1]
+    if unit == "d":
+        date += timedelta(days=amount)
+    elif unit == "w":
+        date += timedelta(weeks=amount)
+    elif unit == "m":
+        date = date.replace(month=date.month + amount)
+    elif unit == "y":
+        date = date.replace(year=date.year + amount)
+    return date.strftime("%Y-%m-%d")
+
+
+def process_recurring(todos):
+    """Create new todos for completed recurring tasks.
+
+    For each completed todo with a rec: meta field, creates a new uncompleted
+    todo unless one already exists with a _prev: hash pointing to it.
+    """
+    existing_prev = {t.meta.get("_prev") for t in todos if "_prev" in t.meta}
+    new_todos = []
+
+    for todo in todos:
+        if todo.completed and "rec" in todo.meta:
+            todo_hash = _todo_hash(todo)
+            if todo_hash not in existing_prev:
+                new_date = _add_recurrence(todo.date, todo.meta["rec"])
+                new_todo = Todo(
+                    title=todo.title,
+                    completed=False,
+                    date=new_date,
+                    tags=list(todo.tags),
+                    description=todo.description,
+                    meta={"rec": todo.meta["rec"], "_prev": todo_hash},
+                )
+                new_todos.append(new_todo)
+
+    return todos + new_todos
 
 
 def write_todotxt(file, todos):
@@ -79,8 +130,8 @@ def write_todotxt(file, todos):
         line += todo.title
         if todo.tags:
             line += " " + " ".join(todo.tags)
-        if todo.rec:
-            line += f" rec:{todo.rec}"
+        for key, value in todo.meta.items():
+            line += f" {key}:{value}"
         file.write(line + "\n")
         if todo.description:
             for desc_line in todo.description.split("\n"):

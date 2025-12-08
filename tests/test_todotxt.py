@@ -4,7 +4,7 @@ from io import StringIO
 
 import pytest
 
-from todotxt import Todo, TodotxtError, read_todotxt, write_todotxt
+from todotxt import Todo, TodotxtError, process_recurring, read_todotxt, write_todotxt
 
 
 @pytest.fixture
@@ -73,17 +73,17 @@ def test_read_todotxt_orphan_indented_line():
         read_todotxt(invalid_file)
 
 
-def test_read_todotxt_rec_none(todo_file):
-    """Test rec is None when not specified."""
+def test_read_todotxt_meta_empty(todo_file):
+    """Test meta is empty when no meta fields specified."""
     todos = read_todotxt(todo_file)
-    assert all(todo.rec is None for todo in todos)
+    assert all(todo.meta.get("rec") is None for todo in todos)
 
 
 def test_read_todotxt_rec_daily():
     """Test parsing daily recurrence."""
     f = StringIO("Water plants rec:3d\n")
     todos = read_todotxt(f)
-    assert todos[0].rec == "3d"
+    assert todos[0].meta["rec"] == "3d"
     assert todos[0].title == "Water plants"
 
 
@@ -91,21 +91,21 @@ def test_read_todotxt_rec_weekly():
     """Test parsing weekly recurrence."""
     f = StringIO("Weekly review rec:1w @work\n")
     todos = read_todotxt(f)
-    assert todos[0].rec == "1w"
+    assert todos[0].meta["rec"] == "1w"
 
 
 def test_read_todotxt_rec_monthly():
     """Test parsing monthly recurrence."""
     f = StringIO("Pay rent rec:1m\n")
     todos = read_todotxt(f)
-    assert todos[0].rec == "1m"
+    assert todos[0].meta["rec"] == "1m"
 
 
 def test_read_todotxt_rec_yearly():
     """Test parsing yearly recurrence."""
     f = StringIO("Birthday reminder rec:1y\n")
     todos = read_todotxt(f)
-    assert todos[0].rec == "1y"
+    assert todos[0].meta["rec"] == "1y"
 
 
 def test_roundtrip(todo_file):
@@ -116,3 +116,56 @@ def test_roundtrip(todo_file):
     output.seek(0)
     todos_roundtrip = read_todotxt(output)
     assert todos == todos_roundtrip
+
+
+def test_process_recurring_creates_new_todo():
+    """Test that process_recurring creates a new todo for completed recurring."""
+    f = StringIO("x 2024-01-15 Water plants rec:1w\n")
+    todos = read_todotxt(f)
+    result = process_recurring(todos)
+    assert len(result) == 2
+    assert result[1].completed is False
+    assert result[1].title == "Water plants"
+    assert result[1].meta["rec"] == "1w"
+    assert result[1].date == "2024-01-22"
+    assert "_prev" in result[1].meta
+
+
+def test_process_recurring_skips_existing():
+    """Test that process_recurring skips if _prev already exists."""
+    f = StringIO("x 2024-01-15 Water plants rec:1w\n")
+    todos = read_todotxt(f)
+    result = process_recurring(todos)
+    result2 = process_recurring(result)
+    assert len(result2) == 2
+
+
+def test_process_recurring_ignores_non_recurring():
+    """Test that process_recurring ignores non-recurring completed todos."""
+    f = StringIO("x 2024-01-15 Buy groceries\n")
+    todos = read_todotxt(f)
+    result = process_recurring(todos)
+    assert len(result) == 1
+
+
+def test_process_recurring_ignores_incomplete():
+    """Test that process_recurring ignores incomplete recurring todos."""
+    f = StringIO("Water plants rec:1w\n")
+    todos = read_todotxt(f)
+    result = process_recurring(todos)
+    assert len(result) == 1
+
+
+def test_process_recurring_description_edit_after_creation():
+    """Test that editing description of completed todo doesn't create duplicate."""
+    f = StringIO("x 2024-01-15 Water plants rec:1w\n  Original note\n")
+    todos = read_todotxt(f)
+    result = process_recurring(todos)
+    assert len(result) == 2
+
+    # Edit the description of the completed todo
+    result[0].description = "Edited note"
+
+    # Run process_recurring again
+    result2 = process_recurring(result)
+    assert len(result2) == 2  # No duplicate created
