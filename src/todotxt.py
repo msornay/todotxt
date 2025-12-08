@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import re
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
@@ -156,11 +157,22 @@ def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", action="version", version=__version__)
-    parser.add_argument("file", type=argparse.FileType("r"), help="todo.txt file")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # do-rec command
+    do_rec = subparsers.add_parser("do-rec", help="Process recurring tasks")
+    do_rec.add_argument("file", type=argparse.FileType("r"), help="todo.txt file")
+    do_rec.add_argument(
+        "-o", "--output", type=argparse.FileType("w"), help="output file"
+    )
 
     args = parser.parse_args()
 
-    read_todotxt(args.file)
+    if args.command == "do-rec":
+        todos = read_todotxt(args.file)
+        todos = process_recurring(todos)
+        output = args.output if args.output else sys.stdout
+        write_todotxt(output, todos)
 
     return 0
 
