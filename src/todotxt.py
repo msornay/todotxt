@@ -8,6 +8,7 @@ __version__ = "0.1.0"
 
 DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 TAG_PATTERN = re.compile(r"[@+]\S+")
+REC_PATTERN = re.compile(r"rec:(\d+[dwmy])")
 
 
 class TodotxtError(Exception):
@@ -21,6 +22,7 @@ class Todo:
     date: str | None = None
     tags: list[str] = field(default_factory=list)
     description: str = ""
+    rec: str | None = None
 
 
 def scan_todotxt(file):
@@ -58,9 +60,12 @@ def _parse_todo_line(line):
             line = parts[1] if len(parts) > 1 else ""
 
     tags = TAG_PATTERN.findall(line)
-    title = TAG_PATTERN.sub("", line).strip()
+    rec_match = REC_PATTERN.search(line)
+    rec = rec_match.group(1) if rec_match else None
+    title = TAG_PATTERN.sub("", line)
+    title = REC_PATTERN.sub("", title).strip()
 
-    return Todo(title=title, completed=completed, date=date, tags=tags)
+    return Todo(title=title, completed=completed, date=date, tags=tags, rec=rec)
 
 
 def main():

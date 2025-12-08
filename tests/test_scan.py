@@ -71,3 +71,38 @@ def test_scan_todotxt_orphan_indented_line():
     invalid_file = StringIO("  orphan indented line\n")
     with pytest.raises(TodotxtError):
         scan_todotxt(invalid_file)
+
+
+def test_scan_todotxt_rec_none(todo_file):
+    """Test rec is None when not specified."""
+    todos = scan_todotxt(todo_file)
+    assert all(todo.rec is None for todo in todos)
+
+
+def test_scan_todotxt_rec_daily():
+    """Test parsing daily recurrence."""
+    f = StringIO("Water plants rec:3d\n")
+    todos = scan_todotxt(f)
+    assert todos[0].rec == "3d"
+    assert todos[0].title == "Water plants"
+
+
+def test_scan_todotxt_rec_weekly():
+    """Test parsing weekly recurrence."""
+    f = StringIO("Weekly review rec:1w @work\n")
+    todos = scan_todotxt(f)
+    assert todos[0].rec == "1w"
+
+
+def test_scan_todotxt_rec_monthly():
+    """Test parsing monthly recurrence."""
+    f = StringIO("Pay rent rec:1m\n")
+    todos = scan_todotxt(f)
+    assert todos[0].rec == "1m"
+
+
+def test_scan_todotxt_rec_yearly():
+    """Test parsing yearly recurrence."""
+    f = StringIO("Birthday reminder rec:1y\n")
+    todos = scan_todotxt(f)
+    assert todos[0].rec == "1y"
