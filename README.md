@@ -2,7 +2,7 @@
 
 ![Tests](https://github.com/msornay/todotxt/actions/workflows/test.yml/badge.svg)
 
-My flavor of todotxt
+custom flavor of todotxt
 
 ## Syntax
 
