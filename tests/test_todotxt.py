@@ -130,3 +130,12 @@ def test_process_recurring_no_due_date_strict():
     lines = result.strip().split('\n')
     assert len(lines) == 2
     assert "due:" not in lines[1]
+
+
+def test_process_recurring_preserves_inline_tag():
+    """Test that tags used as words in the title are preserved in place."""
+    text = "x Borrow a @book at the library rec:+1w done:2025-12-08\n"
+    result = process_recurring_text(text)
+    lines = result.strip().split('\n')
+    assert len(lines) == 2
+    assert "Borrow a @book at the library" in lines[1]
