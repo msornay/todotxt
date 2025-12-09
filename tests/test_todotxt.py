@@ -2,7 +2,7 @@
 
 import pytest
 
-from todotxt import TodotxtError, process_recurring_text
+from todotxt import TodotxtError, find_past_due, process_recurring_text
 
 
 def test_process_recurring_strict_creates_new_todo():
@@ -139,3 +139,38 @@ def test_process_recurring_preserves_inline_tag():
     lines = result.strip().split('\n')
     assert len(lines) == 2
     assert "Borrow a @book at the library" in lines[1]
+
+
+def test_find_past_due_returns_overdue_tasks():
+    """Test that past due incomplete tasks are returned."""
+    text = "Task one due:2025-12-01\nTask two due:2025-12-31\n"
+    result = find_past_due(text, "2025-12-09")
+    assert result == ["Task one due:2025-12-01"]
+
+
+def test_find_past_due_ignores_completed_tasks():
+    """Test that completed tasks are not returned even if past due."""
+    text = "x Done task due:2025-12-01 done:2025-12-01\n"
+    result = find_past_due(text, "2025-12-09")
+    assert result == []
+
+
+def test_find_past_due_ignores_tasks_without_due():
+    """Test that tasks without due date are not returned."""
+    text = "Task without due date\n"
+    result = find_past_due(text, "2025-12-09")
+    assert result == []
+
+
+def test_find_past_due_ignores_invalid_date():
+    """Test that tasks with invalid due date format are ignored."""
+    text = "Task with bad date due:not-a-date\n"
+    result = find_past_due(text, "2025-12-09")
+    assert result == []
+
+
+def test_find_past_due_includes_today():
+    """Test that tasks due today are considered due."""
+    text = "Task due today due:2025-12-09\n"
+    result = find_past_due(text, "2025-12-09")
+    assert result == ["Task due today due:2025-12-09"]

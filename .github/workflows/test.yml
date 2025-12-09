@@ -14,5 +14,20 @@ jobs:
         run: |
           pip install -e .
           pip install pytest
-      - name: Run tests
+      - name: Run unit tests
         run: pytest
+      - name: Test CLI do-rec
+        run: |
+          todotxt do-rec tests/data/recurring.txt | grep "Mass produce widgets"
+          todotxt do-rec tests/data/recurring.txt | grep "_prev:"
+      - name: Test CLI due on file
+        run: |
+          todotxt due tests/data/todo.txt | grep "Buy mass gainer"
+          todotxt due tests/data/todo.txt | grep "Mass produce widgets"
+          ! todotxt due tests/data/todo.txt | grep "Learn to mass start"
+      - name: Test CLI due on folder
+        run: |
+          todotxt due tests/data | grep "Buy mass gainer"
+          todotxt due tests/data | grep "Finish the mass spectrometer"
+      - name: Test CLI due ignores bad files
+        run: todotxt due tests/data

@@ -2,6 +2,7 @@
 
 import argparse
 import hashlib
+import os
 import re
 import sys
 from datetime import datetime, timedelta
@@ -102,6 +103,29 @@ def process_recurring_text(text):
     return text
 
 
+def find_past_due(text, today=None):
+    """Find all incomplete tasks that are past due.
+
+    Returns a list of lines that are past due.
+    """
+    if today is None:
+        today = datetime.now().strftime("%Y-%m-%d")
+
+    past_due = []
+
+    for match in re.finditer(r'^(?!x )(.+)$', text, re.MULTILINE):
+        line = match.group(1)
+
+        due_match = re.search(r'due:(\d{4}-\d{2}-\d{2})', line)
+        if not due_match:
+            continue
+
+        if due_match.group(1) <= today:
+            past_due.append(line)
+
+    return past_due
+
+
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser()
@@ -115,6 +139,12 @@ def main():
         "-o", "--output", type=argparse.FileType("w"), help="output file"
     )
 
+    # due command
+    due = subparsers.add_parser("due", help="Show tasks past due")
+    due.add_argument(
+        "path", nargs="?", default=".", help="file or folder (default: current directory)"
+    )
+
     args = parser.parse_args()
 
     if args.command == "do-rec":
@@ -123,6 +153,25 @@ def main():
         text = process_recurring_text(text)
         output = args.output if args.output else sys.stdout
         output.write(text)
+
+    elif args.command == "due":
+        path = args.path
+        if os.path.isfile(path):
+            files = [path]
+        else:
+            files = []
+            for root, _, filenames in os.walk(path):
+                for filename in filenames:
+                    files.append(os.path.join(root, filename))
+
+        for filepath in files:
+            try:
+                with open(filepath) as f:
+                    text = f.read()
+                for line in find_past_due(text):
+                    print(line)
+            except Exception:
+                pass
 
     return 0
 
