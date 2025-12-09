@@ -4,68 +4,13 @@ import argparse
 import hashlib
 import re
 import sys
-from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
 __version__ = "0.1.0"
 
-TAG_PATTERN = re.compile(r"@\S+")
-META_PATTERN = re.compile(r"(\w+):(\S+)")
-
 
 class TodotxtError(Exception):
     """Error parsing todotxt file."""
-
-
-@dataclass
-class Todo:
-    title: str
-    done: bool = False
-    tags: list[str] = field(default_factory=list)
-    description: str = ""
-    meta: dict[str, str] = field(default_factory=dict)
-
-
-def read_todotxt(file):
-    """Read a todo.txt file and return list of Todo objects."""
-    todos = []
-    current = None
-
-    for line in file:
-        if line.startswith("  "):
-            if current is None:
-                raise TodotxtError("Invalid todotxt: indented line without todo")
-            if current.description:
-                current.description += "\n"
-            current.description += line[2:].rstrip()
-        elif line.strip():
-            current = _parse_todo_line(line.rstrip())
-            todos.append(current)
-        else:
-            current = None
-
-    return todos
-
-
-def _parse_todo_line(line):
-    """Parse a single todo line into a Todo object."""
-    done = False
-
-    if line.startswith("x "):
-        done = True
-        line = line[2:]
-
-    tags = TAG_PATTERN.findall(line)
-    meta = dict(META_PATTERN.findall(line))
-    title = TAG_PATTERN.sub("", line)
-    title = META_PATTERN.sub("", title).strip()
-
-    return Todo(title=title, done=done, tags=tags, meta=meta)
-
-
-def _todo_hash(todo):
-    """Generate a short hash for a todo based on title."""
-    return hashlib.sha1(todo.title.encode()).hexdigest()[:8]
 
 
 def _add_recurrence(date_str, rec):
@@ -92,65 +37,69 @@ def _add_recurrence(date_str, rec):
     return date.strftime("%Y-%m-%d")
 
 
-def process_recurring(todos):
-    """Create new todos for done recurring tasks.
+def process_recurring_text(text):
+    """Process text, appending new todos for completed recurring tasks.
 
-    For each done todo with a rec: meta field, creates a new todo
-    unless one already exists with a _prev: hash pointing to it.
+    Works directly on text to preserve formatting (blank lines, etc.).
+
+    For each completed task with rec: field, creates a new task unless
+    one already exists with a _prev: hash pointing to it.
 
     Strict recurrence (e.g., "3w"): new due date based on old due date.
     Flexible recurrence (e.g., "+3w"): new due date based on done date.
 
     Raises TodotxtError if a done recurring task has no done: date.
     """
-    existing_prev = {t.meta.get("_prev") for t in todos if "_prev" in t.meta}
-    new_todos = []
+    # Find all existing _prev hashes
+    existing_prev = set(re.findall(r'_prev:(\S+)', text))
 
-    for todo in todos:
-        if todo.done and "rec" in todo.meta:
-            if "done" not in todo.meta:
-                raise TodotxtError(
-                    f"Done recurring task missing done: date: {todo.title}"
-                )
-            todo_hash = _todo_hash(todo)
-            if todo_hash not in existing_prev:
-                rec = todo.meta["rec"]
-                is_flexible = rec.startswith("+")
-                base_date = (
-                    todo.meta.get("done") if is_flexible
-                    else todo.meta.get("due")
-                )
-                new_due = _add_recurrence(base_date, rec)
-                new_meta = {"rec": rec, "_prev": todo_hash}
-                if new_due:
-                    new_meta["due"] = new_due
-                new_todo = Todo(
-                    title=todo.title,
-                    done=False,
-                    tags=list(todo.tags),
-                    description=todo.description,
-                    meta=new_meta,
-                )
-                new_todos.append(new_todo)
+    new_tasks = []
 
-    return todos + new_todos
+    # Match completed task lines (start with 'x ')
+    for match in re.finditer(r'^x (.+)$', text, re.MULTILINE):
+        line = match.group(1)
 
+        rec_match = re.search(r'rec:(\+?\d+[dwmy])', line)
+        if not rec_match:
+            continue
+        rec = rec_match.group(1)
 
-def write_todotxt(file, todos):
-    """Write a list of Todo objects to a file."""
-    for todo in todos:
-        line = ""
-        if todo.done:
-            line += "x "
-        line += todo.title
-        if todo.tags:
-            line += " " + " ".join(todo.tags)
-        for key, value in todo.meta.items():
-            line += f" {key}:{value}"
-        file.write(line + "\n")
-        if todo.description:
-            for desc_line in todo.description.split("\n"):
-                file.write(f"  {desc_line}\n")
+        done_match = re.search(r'done:(\S+)', line)
+        if not done_match:
+            raise TodotxtError(f"Done recurring task missing done: date: {line}")
+        done_date = done_match.group(1)
+
+        task_hash = hashlib.sha1(line.encode()).hexdigest()[:8]
+
+        if task_hash in existing_prev:
+            continue
+
+        # Calculate new due date
+        is_flexible = rec.startswith("+")
+        if is_flexible:
+            base_date = done_date
+        else:
+            due_match = re.search(r'due:(\S+)', line)
+            base_date = due_match.group(1) if due_match else None
+
+        new_due = _add_recurrence(base_date, rec)
+
+        # Build new task: original line without done: and due:, plus _prev and new due
+        new_line = re.sub(r'done:\S+', '', line).strip()
+        new_line = re.sub(r'due:\S+', '', new_line).strip()
+        new_line += f" _prev:{task_hash}"
+        if new_due:
+            new_line += f" due:{new_due}"
+
+        new_tasks.append(new_line)
+
+    if new_tasks:
+        # Ensure text ends with newline before appending
+        if text and not text.endswith('\n'):
+            text += '\n'
+        text += '\n'.join(new_tasks) + '\n'
+
+    return text
 
 
 def main():
@@ -161,7 +110,7 @@ def main():
 
     # do-rec command
     do_rec = subparsers.add_parser("do-rec", help="Process recurring tasks")
-    do_rec.add_argument("file", type=argparse.FileType("r"), help="todo.txt file")
+    do_rec.add_argument("file", help="todo.txt file")
     do_rec.add_argument(
         "-o", "--output", type=argparse.FileType("w"), help="output file"
     )
@@ -169,10 +118,11 @@ def main():
     args = parser.parse_args()
 
     if args.command == "do-rec":
-        todos = read_todotxt(args.file)
-        todos = process_recurring(todos)
+        with open(args.file) as f:
+            text = f.read()
+        text = process_recurring_text(text)
         output = args.output if args.output else sys.stdout
-        write_todotxt(output, todos)
+        output.write(text)
 
     return 0
 
