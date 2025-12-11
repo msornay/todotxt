@@ -52,22 +52,24 @@ def process_recurring_text(text):
     Raises TodotxtError if a done recurring task has no done: date.
     """
     # Find all existing _prev hashes
-    existing_prev = set(re.findall(r'_prev:(\S+)', text))
+    existing_prev = set(re.findall(r"_prev:(\S+)", text))
 
     new_tasks = []
 
     # Match completed task lines (start with 'x ')
-    for match in re.finditer(r'^x (.+)$', text, re.MULTILINE):
+    for match in re.finditer(r"^x (.+)$", text, re.MULTILINE):
         line = match.group(1)
 
-        rec_match = re.search(r'rec:(\+?\d+[dwmy])', line)
+        rec_match = re.search(r"rec:(\+?\d+[dwmy])", line)
         if not rec_match:
             continue
         rec = rec_match.group(1)
 
-        done_match = re.search(r'done:(\S+)', line)
+        done_match = re.search(r"done:(\S+)", line)
         if not done_match:
-            raise TodotxtError(f"Done recurring task missing done: date: {line}")
+            raise TodotxtError(
+                f"Done recurring task missing done: date: {line}"
+            )
         done_date = done_match.group(1)
 
         task_hash = hashlib.sha1(line.encode()).hexdigest()[:8]
@@ -80,14 +82,14 @@ def process_recurring_text(text):
         if is_flexible:
             base_date = done_date
         else:
-            due_match = re.search(r'due:(\S+)', line)
+            due_match = re.search(r"due:(\S+)", line)
             base_date = due_match.group(1) if due_match else None
 
         new_due = _add_recurrence(base_date, rec)
 
-        # Build new task: original line without done: and due:, plus _prev and new due
-        new_line = re.sub(r'done:\S+', '', line).strip()
-        new_line = re.sub(r'due:\S+', '', new_line).strip()
+        # Build new task: remove done:/due:, add _prev and new due
+        new_line = re.sub(r"done:\S+", "", line).strip()
+        new_line = re.sub(r"due:\S+", "", new_line).strip()
         new_line += f" _prev:{task_hash}"
         if new_due:
             new_line += f" due:{new_due}"
@@ -96,9 +98,9 @@ def process_recurring_text(text):
 
     if new_tasks:
         # Ensure text ends with newline before appending
-        if text and not text.endswith('\n'):
-            text += '\n'
-        text += '\n'.join(new_tasks) + '\n'
+        if text and not text.endswith("\n"):
+            text += "\n"
+        text += "\n".join(new_tasks) + "\n"
 
     return text
 
@@ -113,10 +115,10 @@ def find_past_due(text, today=None):
 
     past_due = []
 
-    for match in re.finditer(r'^(?!x )(.+)$', text, re.MULTILINE):
+    for match in re.finditer(r"^(?!x )(.+)$", text, re.MULTILINE):
         line = match.group(1)
 
-        due_match = re.search(r'due:(\d{4}-\d{2}-\d{2})', line)
+        due_match = re.search(r"due:(\d{4}-\d{2}-\d{2})", line)
         if not due_match:
             continue
 
@@ -142,7 +144,10 @@ def main():
     # due command
     due = subparsers.add_parser("due", help="Show tasks past due")
     due.add_argument(
-        "path", nargs="?", default=".", help="file or folder (default: current directory)"
+        "path",
+        nargs="?",
+        default=".",
+        help="file or folder (default: current directory)",
     )
 
     args = parser.parse_args()

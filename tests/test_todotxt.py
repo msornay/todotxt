@@ -55,7 +55,8 @@ def test_process_recurring_error_missing_done_date():
 
 def test_process_recurring_preserves_blank_lines():
     """Test that blank lines are preserved in output."""
-    text = "Task one\n\nTask two\n\nx Water plants rec:1w due:2024-01-15 done:2024-01-20\n"
+    text = "Task one\n\nTask two\n\n"
+    text += "x Water plants rec:1w due:2024-01-15 done:2024-01-20\n"
     result = process_recurring_text(text)
     # Original text should be preserved as-is
     assert result.startswith("Task one\n\nTask two\n")
@@ -68,7 +69,7 @@ def test_process_recurring_preserves_formatting():
     # Original line should be unchanged
     assert text in result
     # New task should have the tag
-    lines = result.strip().split('\n')
+    lines = result.strip().split("\n")
     assert len(lines) == 2
     assert "@garden" in lines[1]
 
@@ -114,7 +115,7 @@ def test_process_recurring_no_trailing_newline():
     text = "x Water plants rec:1w due:2024-01-15 done:2024-01-20"
     result = process_recurring_text(text)
     assert "due:2024-01-22" in result
-    assert result.endswith('\n')
+    assert result.endswith("\n")
 
 
 def test_process_recurring_empty_input():
@@ -127,7 +128,7 @@ def test_process_recurring_no_due_date_strict():
     """Test strict recurrence without due date produces no due in new task."""
     text = "x Water plants rec:1w done:2024-01-20\n"
     result = process_recurring_text(text)
-    lines = result.strip().split('\n')
+    lines = result.strip().split("\n")
     assert len(lines) == 2
     assert "due:" not in lines[1]
 
@@ -136,7 +137,7 @@ def test_process_recurring_preserves_inline_tag():
     """Test that tags used as words in the title are preserved in place."""
     text = "x Borrow a @book at the library rec:+1w done:2025-12-08\n"
     result = process_recurring_text(text)
-    lines = result.strip().split('\n')
+    lines = result.strip().split("\n")
     assert len(lines) == 2
     assert "Borrow a @book at the library" in lines[1]
 

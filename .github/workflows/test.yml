@@ -13,7 +13,9 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e .
-          pip install pytest
+          pip install pytest ruff
+      - name: Lint with ruff
+        run: ruff check .
       - name: Run unit tests
         run: pytest
       - name: Test CLI do-rec
