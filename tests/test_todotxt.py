@@ -131,6 +131,20 @@ def test_process_recurring_yearly():
     assert "due:2025-01-15" in result
 
 
+def test_process_recurring_yearly_leap_to_non_leap():
+    """Test yearly recurrence from Feb 29 leap year to non-leap year."""
+    text = "x Task rec:1y due:2024-02-29 done:2024-02-29\n"
+    result = process_recurring_text(text)
+    assert "due:2025-02-28" in result  # Clamp to Feb 28 in non-leap year
+
+
+def test_process_recurring_yearly_leap_to_leap():
+    """Test yearly recurrence from Feb 29 to another leap year."""
+    text = "x Task rec:4y due:2024-02-29 done:2024-02-29\n"
+    result = process_recurring_text(text)
+    assert "due:2028-02-29" in result  # 2028 is a leap year, day preserved
+
+
 def test_process_recurring_no_trailing_newline():
     """Test handling of input without trailing newline."""
     text = "x Water plants rec:1w due:2024-01-15 done:2024-01-20"

@@ -39,7 +39,9 @@ def _add_recurrence(date_str, rec):
         day = min(date.day, calendar.monthrange(year, month)[1])
         date = date.replace(year=year, month=month, day=day)
     elif unit == "y":
-        date = date.replace(year=date.year + amount)
+        year = date.year + amount
+        day = min(date.day, calendar.monthrange(year, date.month)[1])
+        date = date.replace(year=year, day=day)
     return date.strftime("%Y-%m-%d")
 
 
