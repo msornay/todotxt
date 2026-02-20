@@ -103,6 +103,27 @@ def test_process_recurring_monthly():
     assert "due:2024-02-15" in result
 
 
+def test_process_recurring_monthly_crosses_year():
+    """Test monthly recurrence crossing year boundary."""
+    text = "x Task rec:3m due:2024-11-15 done:2024-11-15\n"
+    result = process_recurring_text(text)
+    assert "due:2025-02-15" in result
+
+
+def test_process_recurring_monthly_jan_31_to_feb():
+    """Test monthly recurrence clamps day to target month length."""
+    text = "x Task rec:1m due:2024-01-31 done:2024-01-31\n"
+    result = process_recurring_text(text)
+    assert "due:2024-02-29" in result  # 2024 is a leap year
+
+
+def test_process_recurring_monthly_12m_equals_1y():
+    """Test 12-month recurrence rolls over exactly one year."""
+    text = "x Task rec:12m due:2024-06-15 done:2024-06-15\n"
+    result = process_recurring_text(text)
+    assert "due:2025-06-15" in result
+
+
 def test_process_recurring_yearly():
     """Test yearly recurrence."""
     text = "x Task rec:1y due:2024-01-15 done:2024-01-15\n"

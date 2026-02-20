@@ -1,6 +1,7 @@
 """todotxt"""
 
 import argparse
+import calendar
 import hashlib
 import os
 import re
@@ -32,7 +33,11 @@ def _add_recurrence(date_str, rec):
     elif unit == "w":
         date += timedelta(weeks=amount)
     elif unit == "m":
-        date = date.replace(month=date.month + amount)
+        total = date.month - 1 + amount
+        year = date.year + total // 12
+        month = total % 12 + 1
+        day = min(date.day, calendar.monthrange(year, month)[1])
+        date = date.replace(year=year, month=month, day=day)
     elif unit == "y":
         date = date.replace(year=date.year + amount)
     return date.strftime("%Y-%m-%d")
