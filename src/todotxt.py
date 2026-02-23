@@ -182,8 +182,8 @@ def main():
                     text = f.read()
                 for line in find_past_due(text):
                     print(line)
-            except Exception:
-                pass
+            except (OSError, UnicodeDecodeError) as e:
+                print(f"warning: {filepath}: {e}", file=sys.stderr)
 
     return 0
 
