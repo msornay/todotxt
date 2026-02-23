@@ -122,7 +122,7 @@ def find_past_due(text, today=None):
 
     past_due = []
 
-    for match in re.finditer(r"^(?!x )(.+)$", text, re.MULTILINE):
+    for match in re.finditer(r"^(?!x )(\S.*)$", text, re.MULTILINE):
         line = match.group(1)
 
         due_match = re.search(r"due:(\d{4}-\d{2}-\d{2})", line)

@@ -210,3 +210,23 @@ def test_find_past_due_includes_today():
     text = "Task due today due:2025-12-09\n"
     result = find_past_due(text, "2025-12-09")
     assert result == ["Task due today due:2025-12-09"]
+
+
+def test_find_past_due_skips_description_lines():
+    """Test that indented description lines are not matched."""
+    text = (
+        "Main task due:2099-01-01\n"
+        "  Description with due:2020-01-01\n"
+    )
+    result = find_past_due(text, "2025-12-09")
+    assert result == []
+
+
+def test_find_past_due_skips_description_returns_task():
+    """Test that task is returned but its description line is not."""
+    text = (
+        "Overdue task due:2025-01-01\n"
+        "  Note: originally due:2024-12-01\n"
+    )
+    result = find_past_due(text, "2025-12-09")
+    assert result == ["Overdue task due:2025-01-01"]
