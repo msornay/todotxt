@@ -172,8 +172,13 @@ def main():
             files = [path]
         else:
             files = []
-            for root, _, filenames in os.walk(path):
+            for root, dirs, filenames in os.walk(path):
+                dirs[:] = [
+                    d for d in dirs if not d.startswith(".")
+                ]
                 for filename in filenames:
+                    if filename.startswith("."):
+                        continue
                     files.append(os.path.join(root, filename))
 
         for filepath in files:

@@ -1,5 +1,8 @@
 """Tests for todotxt."""
 
+import subprocess
+import sys
+
 import pytest
 
 from todotxt import TodotxtError, find_past_due, process_recurring_text
@@ -230,3 +233,77 @@ def test_find_past_due_skips_description_returns_task():
     )
     result = find_past_due(text, "2025-12-09")
     assert result == ["Overdue task due:2025-01-01"]
+
+
+# --- due command: directory walking ---
+
+
+def test_due_skips_hidden_directories(tmp_path):
+    """Test that the due command skips hidden directories like .git."""
+    # Create a visible file with a due task
+    todo = tmp_path / "todo.txt"
+    todo.write_text("Overdue task due:2020-01-01\n")
+
+    # Create a hidden directory with a file that has a due task
+    git_dir = tmp_path / ".git"
+    git_dir.mkdir()
+    (git_dir / "config").write_text("Hidden task due:2020-01-01\n")
+
+    result = subprocess.run(
+        [sys.executable, "-m", "todotxt", "due", str(tmp_path)],
+        capture_output=True,
+        text=True,
+    )
+    assert "Overdue task" in result.stdout
+    assert "Hidden task" not in result.stdout
+
+
+def test_due_skips_hidden_files(tmp_path):
+    """Test that the due command skips hidden files."""
+    visible = tmp_path / "todo.txt"
+    visible.write_text("Visible task due:2020-01-01\n")
+
+    hidden = tmp_path / ".hidden"
+    hidden.write_text("Hidden task due:2020-01-01\n")
+
+    result = subprocess.run(
+        [sys.executable, "-m", "todotxt", "due", str(tmp_path)],
+        capture_output=True,
+        text=True,
+    )
+    assert "Visible task" in result.stdout
+    assert "Hidden task" not in result.stdout
+
+
+def test_due_skips_nested_hidden_directories(tmp_path):
+    """Test that hidden dirs nested under visible dirs are skipped."""
+    # visible/todo.txt should be found
+    visible = tmp_path / "visible"
+    visible.mkdir()
+    (visible / "todo.txt").write_text("Found task due:2020-01-01\n")
+
+    # visible/.cache/data.txt should be skipped
+    cache = visible / ".cache"
+    cache.mkdir()
+    (cache / "data.txt").write_text("Cached task due:2020-01-01\n")
+
+    result = subprocess.run(
+        [sys.executable, "-m", "todotxt", "due", str(tmp_path)],
+        capture_output=True,
+        text=True,
+    )
+    assert "Found task" in result.stdout
+    assert "Cached task" not in result.stdout
+
+
+def test_due_reads_single_file_even_if_hidden_name(tmp_path):
+    """Test that a hidden file works when passed directly as a path."""
+    hidden = tmp_path / ".todo"
+    hidden.write_text("Direct task due:2020-01-01\n")
+
+    result = subprocess.run(
+        [sys.executable, "-m", "todotxt", "due", str(hidden)],
+        capture_output=True,
+        text=True,
+    )
+    assert "Direct task" in result.stdout
