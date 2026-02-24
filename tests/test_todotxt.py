@@ -2,10 +2,13 @@
 
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
 from todotxt import TodotxtError, find_past_due, process_recurring_text
+
+SCRIPT = str(Path(__file__).resolve().parent.parent / "src" / "todotxt.py")
 
 
 def test_process_recurring_strict_creates_new_todo():
@@ -250,7 +253,7 @@ def test_due_skips_hidden_directories(tmp_path):
     (git_dir / "config").write_text("Hidden task due:2020-01-01\n")
 
     result = subprocess.run(
-        [sys.executable, "-m", "todotxt", "due", str(tmp_path)],
+        [sys.executable, SCRIPT, "due", str(tmp_path)],
         capture_output=True,
         text=True,
     )
@@ -267,7 +270,7 @@ def test_due_skips_hidden_files(tmp_path):
     hidden.write_text("Hidden task due:2020-01-01\n")
 
     result = subprocess.run(
-        [sys.executable, "-m", "todotxt", "due", str(tmp_path)],
+        [sys.executable, SCRIPT, "due", str(tmp_path)],
         capture_output=True,
         text=True,
     )
@@ -288,7 +291,7 @@ def test_due_skips_nested_hidden_directories(tmp_path):
     (cache / "data.txt").write_text("Cached task due:2020-01-01\n")
 
     result = subprocess.run(
-        [sys.executable, "-m", "todotxt", "due", str(tmp_path)],
+        [sys.executable, SCRIPT, "due", str(tmp_path)],
         capture_output=True,
         text=True,
     )
@@ -302,7 +305,7 @@ def test_due_reads_single_file_even_if_hidden_name(tmp_path):
     hidden.write_text("Direct task due:2020-01-01\n")
 
     result = subprocess.run(
-        [sys.executable, "-m", "todotxt", "due", str(hidden)],
+        [sys.executable, SCRIPT, "due", str(hidden)],
         capture_output=True,
         text=True,
     )
