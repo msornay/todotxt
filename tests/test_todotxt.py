@@ -310,3 +310,107 @@ def test_due_reads_single_file_even_if_hidden_name(tmp_path):
         text=True,
     )
     assert "Direct task" in result.stdout
+
+
+# --- do-rec command: CLI tests ---
+
+
+def test_do_rec_writes_to_stdout(tmp_path):
+    """Test that do-rec writes processed text to stdout."""
+    todo = tmp_path / "todo.txt"
+    todo.write_text(
+        "x Task rec:1w due:2024-01-15 done:2024-01-20\n"
+    )
+    result = subprocess.run(
+        [sys.executable, SCRIPT, "do-rec", str(todo)],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    assert "due:2024-01-22" in result.stdout
+    assert "_prev:" in result.stdout
+
+
+def test_do_rec_output_file(tmp_path):
+    """Test that do-rec -o writes to specified file."""
+    todo = tmp_path / "todo.txt"
+    todo.write_text(
+        "x Task rec:1w due:2024-01-15 done:2024-01-20\n"
+    )
+    out = tmp_path / "output.txt"
+    result = subprocess.run(
+        [
+            sys.executable, SCRIPT,
+            "do-rec", str(todo),
+            "-o", str(out),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    content = out.read_text()
+    assert "due:2024-01-22" in content
+    assert "_prev:" in content
+
+
+def test_do_rec_passthrough_non_recurring(tmp_path):
+    """Test that do-rec passes through non-recurring tasks."""
+    todo = tmp_path / "todo.txt"
+    todo.write_text("Normal task due:2025-01-01\n")
+    result = subprocess.run(
+        [sys.executable, SCRIPT, "do-rec", str(todo)],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    assert result.stdout == "Normal task due:2025-01-01\n"
+
+
+def test_do_rec_file_not_found(tmp_path):
+    """Test that do-rec exits non-zero for missing file."""
+    result = subprocess.run(
+        [
+            sys.executable, SCRIPT,
+            "do-rec", str(tmp_path / "nonexistent.txt"),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+
+
+def test_do_rec_error_on_bad_task(tmp_path):
+    """Test do-rec exits non-zero for done task missing done date."""
+    todo = tmp_path / "todo.txt"
+    todo.write_text("x Task rec:1w due:2024-01-15\n")
+    result = subprocess.run(
+        [sys.executable, SCRIPT, "do-rec", str(todo)],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+
+
+def test_version_flag():
+    """Test --version outputs version string."""
+    result = subprocess.run(
+        [sys.executable, SCRIPT, "--version"],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    assert "0.1.0" in result.stdout
+
+
+# --- Whitespace normalization ---
+
+
+def test_process_recurring_no_double_spaces():
+    """Test that removing done:/due: doesn't leave double spaces."""
+    text = (
+        "x Water done:2024-01-20 rec:1w due:2024-01-15\n"
+    )
+    result = process_recurring_text(text)
+    lines = result.strip().split("\n")
+    new_task = lines[1]
+    assert "  " not in new_task

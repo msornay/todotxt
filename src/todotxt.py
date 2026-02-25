@@ -95,8 +95,8 @@ def process_recurring_text(text):
         new_due = _add_recurrence(base_date, rec)
 
         # Build new task: remove done:/due:, add _prev and new due
-        new_line = re.sub(r"done:\S+", "", line).strip()
-        new_line = re.sub(r"due:\S+", "", new_line).strip()
+        new_line = re.sub(r"done:\S+\s*", "", line).strip()
+        new_line = re.sub(r"due:\S+\s*", "", new_line).strip()
         new_line += f" _prev:{task_hash}"
         if new_due:
             new_line += f" due:{new_due}"
