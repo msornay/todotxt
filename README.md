@@ -53,20 +53,35 @@ Water plants @home rec:+1w due:2024-01-15
 poetry install
 ```
 
+## Usage
+
+### Show past-due tasks
+
+```bash
+todotxt due todo.txt        # single file
+todotxt due ~/todos/        # scan a directory
+```
+
+### Process recurring tasks
+
+```bash
+todotxt do-rec todo.txt           # print to stdout
+todotxt do-rec todo.txt -o out.txt  # write to file
+```
+
+For each completed task with a `rec:` field, appends a new occurrence with an
+updated `due:` date and a `_prev:` hash linking back to the original.
+
 ## Development
 
 ### Running tests
 
 ```bash
-poetry run pytest
+make test
 ```
 
 ### Linting and formatting
 
 ```bash
-# Check code
-poetry run ruff check .
-
-# Format code
-poetry run ruff format .
+make lint
 ```
