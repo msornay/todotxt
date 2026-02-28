@@ -353,6 +353,28 @@ def test_do_rec_output_file(tmp_path):
     assert "_prev:" in content
 
 
+def test_do_rec_output_same_as_input(tmp_path):
+    """Test that do-rec -o same file as input doesn't destroy data."""
+    todo = tmp_path / "todo.txt"
+    todo.write_text(
+        "x Task rec:1w due:2024-01-15 done:2024-01-20\n"
+    )
+    result = subprocess.run(
+        [
+            sys.executable, SCRIPT,
+            "do-rec", str(todo),
+            "-o", str(todo),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    content = todo.read_text()
+    assert "x Task rec:1w due:2024-01-15 done:2024-01-20" in content
+    assert "due:2024-01-22" in content
+    assert "_prev:" in content
+
+
 def test_do_rec_passthrough_non_recurring(tmp_path):
     """Test that do-rec passes through non-recurring tasks."""
     todo = tmp_path / "todo.txt"

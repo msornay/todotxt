@@ -145,7 +145,7 @@ def main():
     do_rec = subparsers.add_parser("do-rec", help="Process recurring tasks")
     do_rec.add_argument("file", help="todo.txt file")
     do_rec.add_argument(
-        "-o", "--output", type=argparse.FileType("w"), help="output file"
+        "-o", "--output", help="output file"
     )
 
     # due command
@@ -163,8 +163,11 @@ def main():
         with open(args.file) as f:
             text = f.read()
         text = process_recurring_text(text)
-        output = args.output if args.output else sys.stdout
-        output.write(text)
+        if args.output:
+            with open(args.output, "w") as f:
+                f.write(text)
+        else:
+            sys.stdout.write(text)
 
     elif args.command == "due":
         path = args.path
