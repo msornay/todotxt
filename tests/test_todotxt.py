@@ -407,7 +407,7 @@ def test_do_rec_passthrough_non_recurring(tmp_path):
 
 
 def test_do_rec_file_not_found(tmp_path):
-    """Test that do-rec exits non-zero for missing file."""
+    """Test that do-rec exits non-zero with clean error for missing file."""
     result = subprocess.run(
         [
             sys.executable,
@@ -419,10 +419,24 @@ def test_do_rec_file_not_found(tmp_path):
         text=True,
     )
     assert result.returncode != 0
+    assert "error:" in result.stderr
+    assert "Traceback" not in result.stderr
+
+
+def test_do_rec_directory_error(tmp_path):
+    """Test that do-rec exits non-zero with clean error for directory."""
+    result = subprocess.run(
+        [sys.executable, SCRIPT, "do-rec", str(tmp_path)],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "error:" in result.stderr
+    assert "Traceback" not in result.stderr
 
 
 def test_do_rec_error_on_bad_task(tmp_path):
-    """Test do-rec exits non-zero for done task missing done date."""
+    """Test do-rec exits non-zero with clean error for bad task."""
     todo = tmp_path / "todo.txt"
     todo.write_text("x Task rec:1w due:2024-01-15\n")
     result = subprocess.run(
@@ -431,6 +445,8 @@ def test_do_rec_error_on_bad_task(tmp_path):
         text=True,
     )
     assert result.returncode != 0
+    assert "error:" in result.stderr
+    assert "Traceback" not in result.stderr
 
 
 def test_version_flag():

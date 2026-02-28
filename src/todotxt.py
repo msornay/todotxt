@@ -158,9 +158,16 @@ def main():
     args = parser.parse_args()
 
     if args.command == "do-rec":
-        with open(args.file) as f:
-            text = f.read()
-        text = process_recurring_text(text)
+        try:
+            with open(args.file) as f:
+                text = f.read()
+            text = process_recurring_text(text)
+        except OSError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 1
+        except TodotxtError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 1
         if args.output:
             with open(args.output, "w") as f:
                 f.write(text)
