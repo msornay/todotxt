@@ -220,10 +220,7 @@ def test_find_past_due_includes_today():
 
 def test_find_past_due_skips_description_lines():
     """Test that indented description lines are not matched."""
-    text = (
-        "Main task due:2099-01-01\n"
-        "  Description with due:2020-01-01\n"
-    )
+    text = "Main task due:2099-01-01\n" "  Description with due:2020-01-01\n"
     result = find_past_due(text, "2025-12-09")
     assert result == []
 
@@ -231,8 +228,7 @@ def test_find_past_due_skips_description_lines():
 def test_find_past_due_skips_description_returns_task():
     """Test that task is returned but its description line is not."""
     text = (
-        "Overdue task due:2025-01-01\n"
-        "  Note: originally due:2024-12-01\n"
+        "Overdue task due:2025-01-01\n" "  Note: originally due:2024-12-01\n"
     )
     result = find_past_due(text, "2025-12-09")
     assert result == ["Overdue task due:2025-01-01"]
@@ -340,9 +336,7 @@ def test_due_nonexistent_directory():
 def test_do_rec_writes_to_stdout(tmp_path):
     """Test that do-rec writes processed text to stdout."""
     todo = tmp_path / "todo.txt"
-    todo.write_text(
-        "x Task rec:1w due:2024-01-15 done:2024-01-20\n"
-    )
+    todo.write_text("x Task rec:1w due:2024-01-15 done:2024-01-20\n")
     result = subprocess.run(
         [sys.executable, SCRIPT, "do-rec", str(todo)],
         capture_output=True,
@@ -356,15 +350,16 @@ def test_do_rec_writes_to_stdout(tmp_path):
 def test_do_rec_output_file(tmp_path):
     """Test that do-rec -o writes to specified file."""
     todo = tmp_path / "todo.txt"
-    todo.write_text(
-        "x Task rec:1w due:2024-01-15 done:2024-01-20\n"
-    )
+    todo.write_text("x Task rec:1w due:2024-01-15 done:2024-01-20\n")
     out = tmp_path / "output.txt"
     result = subprocess.run(
         [
-            sys.executable, SCRIPT,
-            "do-rec", str(todo),
-            "-o", str(out),
+            sys.executable,
+            SCRIPT,
+            "do-rec",
+            str(todo),
+            "-o",
+            str(out),
         ],
         capture_output=True,
         text=True,
@@ -378,14 +373,15 @@ def test_do_rec_output_file(tmp_path):
 def test_do_rec_output_same_as_input(tmp_path):
     """Test that do-rec -o same file as input doesn't destroy data."""
     todo = tmp_path / "todo.txt"
-    todo.write_text(
-        "x Task rec:1w due:2024-01-15 done:2024-01-20\n"
-    )
+    todo.write_text("x Task rec:1w due:2024-01-15 done:2024-01-20\n")
     result = subprocess.run(
         [
-            sys.executable, SCRIPT,
-            "do-rec", str(todo),
-            "-o", str(todo),
+            sys.executable,
+            SCRIPT,
+            "do-rec",
+            str(todo),
+            "-o",
+            str(todo),
         ],
         capture_output=True,
         text=True,
@@ -414,8 +410,10 @@ def test_do_rec_file_not_found(tmp_path):
     """Test that do-rec exits non-zero for missing file."""
     result = subprocess.run(
         [
-            sys.executable, SCRIPT,
-            "do-rec", str(tmp_path / "nonexistent.txt"),
+            sys.executable,
+            SCRIPT,
+            "do-rec",
+            str(tmp_path / "nonexistent.txt"),
         ],
         capture_output=True,
         text=True,
@@ -451,9 +449,7 @@ def test_version_flag():
 
 def test_process_recurring_no_double_spaces():
     """Test that removing done:/due: doesn't leave double spaces."""
-    text = (
-        "x Water done:2024-01-20 rec:1w due:2024-01-15\n"
-    )
+    text = "x Water done:2024-01-20 rec:1w due:2024-01-15\n"
     result = process_recurring_text(text)
     lines = result.strip().split("\n")
     new_task = lines[1]

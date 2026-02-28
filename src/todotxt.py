@@ -144,9 +144,7 @@ def main():
     # do-rec command
     do_rec = subparsers.add_parser("do-rec", help="Process recurring tasks")
     do_rec.add_argument("file", help="todo.txt file")
-    do_rec.add_argument(
-        "-o", "--output", help="output file"
-    )
+    do_rec.add_argument("-o", "--output", help="output file")
 
     # due command
     due = subparsers.add_parser("due", help="Show tasks past due")
@@ -182,9 +180,7 @@ def main():
         else:
             files = []
             for root, dirs, filenames in os.walk(path):
-                dirs[:] = [
-                    d for d in dirs if not d.startswith(".")
-                ]
+                dirs[:] = [d for d in dirs if not d.startswith(".")]
                 for filename in filenames:
                     if filename.startswith("."):
                         continue
