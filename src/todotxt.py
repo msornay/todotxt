@@ -171,6 +171,12 @@ def main():
 
     elif args.command == "due":
         path = args.path
+        if not os.path.exists(path):
+            print(
+                f"error: {path}: No such file or directory",
+                file=sys.stderr,
+            )
+            return 1
         if os.path.isfile(path):
             files = [path]
         else:

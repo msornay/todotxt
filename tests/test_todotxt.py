@@ -312,6 +312,28 @@ def test_due_reads_single_file_even_if_hidden_name(tmp_path):
     assert "Direct task" in result.stdout
 
 
+def test_due_nonexistent_file():
+    """Test that due exits non-zero for missing file."""
+    result = subprocess.run(
+        [sys.executable, SCRIPT, "due", "nonexistent-file.txt"],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "No such file or directory" in result.stderr
+
+
+def test_due_nonexistent_directory():
+    """Test that due exits non-zero for missing directory."""
+    result = subprocess.run(
+        [sys.executable, SCRIPT, "due", "nonexistent-dir/"],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "No such file or directory" in result.stderr
+
+
 # --- do-rec command: CLI tests ---
 
 
