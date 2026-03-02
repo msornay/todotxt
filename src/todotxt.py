@@ -92,7 +92,15 @@ def process_recurring_text(text):
             due_match = re.search(r"due:(\S+)", line)
             base_date = due_match.group(1) if due_match else None
 
-        new_due = _add_recurrence(base_date, rec)
+        try:
+            new_due = _add_recurrence(base_date, rec)
+        except ValueError:
+            print(
+                f"warning: skipping task with invalid date: "
+                f"x {line}",
+                file=sys.stderr,
+            )
+            continue
 
         # Build new task: remove done:/due:, add _prev and new due
         new_line = re.sub(r"done:\S+\s*", "", line).strip()

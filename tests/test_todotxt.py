@@ -461,6 +461,34 @@ def test_version_flag():
 # --- Whitespace normalization ---
 
 
+def test_process_recurring_skips_invalid_due_date(capsys):
+    """Test that invalid due: date is skipped with a warning."""
+    text = (
+        "x Valid rec:1w due:2024-01-10 done:2024-01-10\n"
+        "x Bad rec:1d due:2024-13-01 done:2024-01-10\n"
+        "x Also valid rec:1m due:2024-02-01 done:2024-02-01\n"
+    )
+    result = process_recurring_text(text)
+    # Valid tasks should be processed
+    assert "due:2024-01-17" in result
+    assert "due:2024-03-01" in result
+    # Warning should be printed to stderr
+    captured = capsys.readouterr()
+    assert "warning:" in captured.err
+    assert "2024-13-01" in captured.err
+
+
+def test_process_recurring_skips_invalid_done_date_flexible(capsys):
+    """Test that invalid done: date on flexible rec is skipped."""
+    text = "x Task rec:+1w due:2024-01-15 done:2024-13-01\n"
+    result = process_recurring_text(text)
+    # Task should be skipped, no new task appended
+    assert result == text
+    captured = capsys.readouterr()
+    assert "warning:" in captured.err
+    assert "2024-13-01" in captured.err
+
+
 def test_process_recurring_no_double_spaces():
     """Test that removing done:/due: doesn't leave double spaces."""
     text = "x Water done:2024-01-20 rec:1w due:2024-01-15\n"
